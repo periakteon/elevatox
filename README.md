@@ -1,9 +1,13 @@
 # Elevator Maintenance Platform - A Comprehensive Management Tool
 
 – Developed a dedicated platform for elevator companies to manage employees, register buildings and elevators, track maintenance, and record payments.
+
 – **Technological Stack:** Built with Next.js for fast and scalable performance, using tRPC for seamless API communication and Prisma ORM for efficient database management.
+
 – **Advanced Authentication:** Integrated Clerk Auth for secure user authentication and Upstash Redis for real-time data processing.
+
 – **Dynamic Forms & Tables:** Utilized React Hook Form and TanStack Table for dynamic data entry and display, ensuring ease of use.
+
 – **TypeScript:** Leveraged TypeScript to catch errors at compile time, enhancing code reliability and maintainability.
 
 # Setup
