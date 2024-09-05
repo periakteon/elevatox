@@ -1,0 +1,372 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OWNER
+  OFFICE_STAFF
+  FIELD_STAFF
+}
+
+model User {
+  id String @id @default(uuid())
+
+  userId    String  @unique
+  email     String  @unique
+  firstName String
+  lastName  String
+  phone     String
+  isActive  Boolean
+  avatar    String? @db.Text
+
+  role Role
+
+  ownerCompany Company? @relation(name: "owner")
+
+  staffCompany   Company? @relation(fields: [staffCompanyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  staffCompanyId String?
+
+  elevatorToStaff ElevatorToUser[]
+
+  makineDairesiMaintenance MakineDairesiMaintenance[]
+  KabinUstuMaintenance     KabinUstuMaintenance[]
+  KuyuDibiMaintenance      KuyuDibiMaintenance[]
+
+  Payment Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([staffCompanyId])
+}
+
+enum CompanyType {
+  // şahıs şirketi
+  INDIVIDUAL_COMPANY
+  // limited şirketi
+  LIMITED_COMPANY
+}
+
+model Company {
+  id String @id @default(uuid())
+
+  name     String
+  email    String
+  isActive Boolean
+  phone    String
+  logo     String  @db.Text
+  address  String  @db.Text
+  city     String
+  district String
+
+  // fatura kesmek için bize gerekli bilgiler
+  companyType CompanyType @default(LIMITED_COMPANY)
+  taxId       String      @default("1234567890")
+
+  owner   User?   @relation(name: "owner", fields: [ownerId], references: [userId], onDelete: Cascade)
+  ownerId String? @unique
+
+  magicLink MagicLink[]
+
+  staff User[]
+
+  elevators Elevator[]
+
+  buildingResponsiblePerson BuildingResponsiblePerson[]
+
+  maintenance Maintenance[]
+
+  Payment Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+model MagicLink {
+  id String @id @default(uuid())
+
+  token String @db.Text
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+model ElevatorToUser {
+  id String @id @default(uuid())
+
+  elevator   Elevator @relation(fields: [elevatorId], references: [id], onDelete: Cascade)
+  elevatorId String
+
+  staff   User   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staffId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([elevatorId])
+  @@index([staffId])
+}
+
+enum ElevatorType {
+  INSAN
+  // yük asansörü
+  YUK
+}
+
+model Elevator {
+  id String @id @default(uuid())
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+
+  // bakım ücreti
+  maintenanceFee       String
+  // asansör kimlik numarası (elle girilecek)
+  elevatorSerialNumber String
+
+  //enum : insan asansörü, yük asansörü
+  elevatorType           ElevatorType
+  // beyan yükü(kg) -> 320kg
+  elevatorCapacityKg     String?
+  // beyan kişi sayısı -> 4 kişi
+  elevatorCapacityPerson String?
+
+  // binadaki asansörden kim sorumlu / bina sorumlusu
+  buildingResponsiblePerson   BuildingResponsiblePerson @relation(fields: [buildingResponsiblePersonId], references: [id], onDelete: Cascade)
+  buildingResponsiblePersonId String
+
+  // montaj tarihi
+  elevatorInstallationDate    DateTime
+  // aynı zamanda periyodik bakım tarihi olacak bu, 1 ayda bir bakım yapılacak
+  elevatorLastMaintenanceDate DateTime
+
+  isActive        Boolean
+  elevatorToStaff ElevatorToUser[]
+
+  elevatorQRCode ElevatorQRCode[]
+
+  maintenance Maintenance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([buildingResponsiblePersonId])
+}
+
+model BuildingResponsiblePerson {
+  id String @id @default(uuid())
+
+  firstName     String
+  lastName      String
+  // tc no
+  citizenshipId String
+  // vergi no
+  taxId         String
+  phone         String
+  city          String
+  // ilçe
+  district      String
+  // bölge
+  area          String
+  address       String  @db.Text
+  buildingName  String
+  // bina kaç katlı (6 katlı vb.)
+  buildingFloor String
+  isActive      Boolean
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+
+  elevator Elevator[]
+
+  Payment Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+enum ElevatorQRCODELocation {
+  KUYU_DIBI
+  KABIN_USTU
+  MAKINE_DAIRESI
+}
+
+model ElevatorQRCode {
+  id String @id @default(uuid())
+
+  elevator   Elevator @relation(fields: [elevatorId], references: [id], onDelete: Cascade)
+  elevatorId String
+
+  elevatorLocation ElevatorQRCODELocation
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([elevatorId])
+}
+
+model Maintenance {
+  id String @id @default(uuid())
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+
+  elevator   Elevator @relation(fields: [elevatorId], references: [id], onDelete: Cascade)
+  elevatorId String
+
+  makineDairesiMaintenance MakineDairesiMaintenance[]
+  kabinUstuMaintenance     KabinUstuMaintenance[]
+  kuyuDibiMaintenance      KuyuDibiMaintenance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([elevatorId])
+  @@index([companyId])
+}
+
+model KabinUstuMaintenance {
+  id String @id @default(uuid())
+
+  staff   User   @relation(fields: [staffId], references: [userId])
+  staffId String
+
+  additionalNote String?
+
+  maintenance   Maintenance @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
+  maintenanceId String
+
+  // hız regülatörü
+  speedRegulator        Boolean
+  // asansör kabini / karşı ağırlık
+  counterWeight         Boolean
+  // asansör kabini
+  elevatorCabin         Boolean
+  // durak girişi
+  stationEntrance       Boolean
+  // asansör kabin kapısı
+  elevatorCabinDoor     Boolean
+  // kat seviyesi
+  floorLevel            Boolean
+  // sınır güvenliği kesicisi
+  borderSecurityBreaker Boolean
+  // acil alarm tertibatı
+  emergencyAlarm        Boolean
+  // durak kumandaları ve göstergeleri
+  stopControls          Boolean
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([maintenanceId])
+  @@index([staffId])
+}
+
+model KuyuDibiMaintenance {
+  id String @id @default(uuid())
+
+  staff   User   @relation(fields: [staffId], references: [userId])
+  staffId String
+
+  additionalNote String?
+
+  maintenance   Maintenance @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
+  maintenanceId String
+
+  // hız regülatörü
+  speedRegulator        Boolean
+  // sınır güvenliği kesicisi
+  borderSecurityBreaker Boolean
+  // acil alarm tertibatı
+  emergencyAlarm        Boolean
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([maintenanceId])
+  @@index([staffId])
+}
+
+model MakineDairesiMaintenance {
+  id String @id @default(uuid())
+
+  staff   User   @relation(fields: [staffId], references: [userId])
+  staffId String
+
+  additionalNote String?
+
+  maintenance   Maintenance @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
+  maintenanceId String
+
+  // tahrik motoru / jeneratör
+  propulsionMotor Boolean
+  // dişli kutusu
+  gearBox         Boolean
+  // kumanda panosu
+  switchBoard     Boolean
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([maintenanceId])
+  @@index([staffId])
+}
+
+model ContactMessages {
+  id String @id @default(uuid())
+
+  firstName String
+  lastName  String
+  email     String
+  phone     String
+  message   String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id String @id @default(uuid())
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+
+  staff   User   @relation(fields: [staffId], references: [userId])
+  staffId String
+
+  buildingResponsiblePerson   BuildingResponsiblePerson @relation(fields: [buildingResponsiblePersonId], references: [id], onDelete: Cascade)
+  buildingResponsiblePersonId String
+
+  // ödeme tarihi
+  paymentDate        DateTime
+  // ödeme tutarı
+  paymentAmount      String
+  // ödeme açıklaması
+  paymentDescription String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([staffId])
+  @@index([buildingResponsiblePersonId])
+}

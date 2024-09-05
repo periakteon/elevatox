@@ -1,0 +1,1 @@
+/bakim/liste/:id için
